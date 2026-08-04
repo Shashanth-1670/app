@@ -29,17 +29,14 @@ Build a responsive full-stack web application "Smart Scrap" — a platform that 
 - Footer with hidden Lock icon → passkey modal → `/admin`
 - Admin Master Panel: summary cards, tabs for Orders / Users / Collectors, live refresh
 
-## Iteration 2 (2026-08) — 5 Features Added
-- **Real Twilio masked calling**: POST /api/orders/{id}/call places live proxy call (collector → Twilio → seller). Env vars: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`. Missing creds → 503 + `twilio-warning` banner + disabled UI (no fakes).
-- **Embedded Leaflet map** on collector accepted-order cards. Dark CartoDB tiles + OSRM route polyline + Nominatim geocode + "Directions" external button.
-- **Referral rewards**: every seller gets `SSXXXXXX` code, `?ref=CODE` URL prefill, ₹50 credited on referee's first-completed pickup (idempotent — no double credit). Copy-link button, admin Referrals payout table.
-- **SMS alerts**: sent on order accept + complete + referral payout. Log-and-skip when Twilio unconfigured (never blocks main flow).
-- **Admin Live Pricing Editor** (/admin → Pricing tab). Per-kg rates stored in `db.pricing`; new orders use current rate; existing orders keep locked `estimated_amount`.
-- Collector polling reduced 4s→3s for real-time feel. Feed now redacts `seller_mobile` from response entirely — only masked `91 XXXXXX##` sent.
+## Iteration 3 (2026-08) — Collector Ratings + Weekly Payout Emails
+- **Ratings**: POST `/orders/{id}/rate` (1-5 + comment, seller-only, completed orders, one-shot). Updates `avg_rating` + `ratings_count` on collector. Seller order list now shows collector's live rating; landing page has Top-Rated Collectors bento; collector stats include own rating; admin has Ratings tab with all reviews.
+- **Weekly Summary Emails**: Via Emergent-managed Resend proxy (EMAIL_BASE_URL constant, X-Email-Key header, EMAIL_FROM_NAME=Smart Scrap). Optional email on registration + PATCH `/user/email`. Sunday hourly asyncio loop sends recap to sellers with email who haven't received one in 6+ days. Beautiful dark HTML email with scrap+referral+combined totals and pickup list. Manual "Preview now" button + Admin "Broadcast Weekly". Empty `EMERGENT_EMAIL_KEY` → 503 + banner (no fakes).
+- Admin summary now includes `total_ratings`, `sellers_with_email`, `email_configured`, `twilio_configured` badges.
 
 ## Backlog (P1/P2)
-- Split server.py into routers (auth/orders/admin) + services/twilio.py
-- Server-side geocode cache (db.geocache) to avoid Nominatim throttling
-- Unique index on `users.referral_code`
-- WebSocket push (currently polling)
-- Multi-city dynamic pricing zones
+- Split server.py into routers
+- Server-side geocode cache (db.geocache)
+- Unique index on users.referral_code
+- WebSocket push
+- Multi-city pricing zones

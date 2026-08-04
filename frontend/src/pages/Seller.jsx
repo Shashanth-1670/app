@@ -127,7 +127,7 @@ export default function Seller() {
                         {o.collector_name && (
                           <div className="text-xs text-white/60 mt-1 flex items-center gap-2">
                             <span>Collector: {o.collector_name}</span>
-                            {o.collector_avg_rating > 0 && (
+                            {o.collector_ratings_count >= 2 && o.collector_avg_rating > 0 && (
                               <span className="inline-flex items-center gap-1 text-[#00FF66]"><Star className="h-3 w-3 fill-[#00FF66]"/>{o.collector_avg_rating.toFixed(1)} ({o.collector_ratings_count})</span>
                             )}
                           </div>

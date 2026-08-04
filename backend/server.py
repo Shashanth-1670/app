@@ -626,7 +626,7 @@ async def collector_stats(user=Depends(get_current_user)):
 @api_router.get("/collectors/top")
 async def top_collectors():
     docs = await db.users.find(
-        {"role": "collector", "ratings_count": {"$gte": 1}},
+        {"role": "collector", "ratings_count": {"$gte": 2}},
         {"_id": 0, "id": 1, "name": 1, "company_name": 1, "avg_rating": 1, "ratings_count": 1, "address": 1},
     ).sort([("avg_rating", -1), ("ratings_count", -1)]).limit(6).to_list(6)
     return docs

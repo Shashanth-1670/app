@@ -122,8 +122,8 @@ export default function Collector() {
                     <Star className="h-4 w-4"/>My Rating
                   </div>
                   <div className="font-display text-3xl font-black text-[#00FF66] flex items-baseline gap-2">
-                    {stats.avg_rating > 0 ? stats.avg_rating.toFixed(1) : "—"}
-                    <span className="text-xs text-white/40 font-normal">from {stats.ratings_count || 0}</span>
+                    {stats.ratings_count >= 2 ? stats.avg_rating.toFixed(1) : "—"}
+                    <span className="text-xs text-white/40 font-normal">{stats.ratings_count >= 2 ? `from ${stats.ratings_count}` : `${stats.ratings_count || 0} so far`}</span>
                   </div>
                 </div>
               </div>
