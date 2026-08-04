@@ -1,0 +1,102 @@
+{
+  "theme_strategy": {
+    "default_theme": "dark",
+    "rationale": "A dark theme amplifies the vibrant green eco-friendly aesthetic, creating a premium, modern, and tech-forward feel. High contrast highlights the green actions (CTAs) and sustainability stats."
+  },
+  "typography": {
+    "headings": {
+      "family": "Outfit",
+      "weights": ["500", "700", "900"],
+      "usage": "Hero texts, section titles, and dashboard metric numbers. Use tracking-tight for large text."
+    },
+    "body": {
+      "family": "Manrope",
+      "weights": ["400", "500"],
+      "usage": "Paragraphs, forms, data tables, labels. High legibility for dashboards."
+    }
+  },
+  "colors": {
+    "primary": "#00FF66",
+    "primary_hover": "#00E055",
+    "background": "#050505",
+    "surface": "#121212",
+    "surface_hover": "#1C1C1C",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "border": "#27272A",
+    "success": "#10B981",
+    "error": "#EF4444"
+  },
+  "visual_enhancers": {
+    "shadows": "Minimal ambient shadows. Rely on 1px borders (`border-white/10`) to separate dark surfaces.",
+    "gradients": "Use glowing radial gradients behind key elements like the Hero CTA, using primary color with heavy blur (`bg-[#00FF66]/10 blur-3xl`).",
+    "radius": "Slightly rounded (`rounded-xl` or `rounded-2xl`) for a modern approachable tech feel.",
+    "textures": "Subtle grain/noise overlay on the marketing landing page background to reduce digital flatness."
+  },
+  "grids_and_layouts": {
+    "marketing_page": "Bento grid (Mode A: The Tetris Grid) for Feature Highlights. Use `gap-6` or `gap-8`. Sections should have generous padding (`py-24` or `py-32`).",
+    "dashboards": "High-density grid (Mode B) for Seller/Collector Analytics. Tight gaps (`gap-4` or `gap-6`). Direct children of grid container."
+  },
+  "component_instructions": {
+    "header": "Crystal Glassmorphism (`backdrop-blur-xl bg-black/60 border-b border-white/10`). Fixed top, `z-50`.",
+    "logo": "3D Animated Logo: Use `framer-motion` to continuously rotate a recycling emblem SVG. Vibrant green with a subtle drop shadow glow.",
+    "hero_section": "Dark background with a high-quality image overlay (`bg-black/50` or stronger to ensure text readability). Center-aligned massive text (`text-5xl md:text-6xl+`). 'Request Pickup' CTA must be solid vibrant green with black text for high contrast.",
+    "social_proof": "Use large stat blocks (`text-5xl font-black text-[#00FF66]`) with uppercase tiny tracking labels (`tracking-[0.2em] text-xs`).",
+    "features_bento": "Cardless or 1px border cards. Focus on 'Masked Calling' and 'In-Built Navigation' features. Add subtle green glowing borders on hover.",
+    "forms": "Seller Auth & Pickup Order Form: Shadcn `Dialog`, `Form`, `Select`, `Input`. Use `bg-surface` for inputs with `focus:ring-[#00FF66] focus:border-[#00FF66]`.",
+    "collector_dashboard": "Order Feed: Feed/List layout. Order Cards must have 'Masked Call' & 'Navigate' buttons (subtle gray background, white text, green on hover). Online/Offline switch in header using Shadcn Switch.",
+    "analytics": "Use Recharts/Shadcn charts. Bar charts for scrap weight, Area charts for earnings. Keep tooltips dark with green accents.",
+    "admin_portal": "Hidden access via footer lock icon. Clicking prompts a modal/input for passkey '8762'.",
+    "buttons": "Pill-shaped (`rounded-full`) or slightly rounded (`rounded-lg`). Primary CTAs are solid green, black text. Secondary CTAs are outline or glass."
+  },
+  "motion": {
+    "interactions": "Hover states on all cards (`-translate-y-1` + `border-[#00FF66]/50`). Buttons should scale down slightly on click (`active:scale-95`).",
+    "page_transitions": "Staggered fade-up for dashboard widgets and feed items using framer-motion.",
+    "3d_elements": "Framer motion for 3D continuous rotation of the logo. Keep it lightweight."
+  },
+  "accessibility": {
+    "contrast": "Ensure black text is used on the vibrant green primary buttons for APCA/WCAG AA compliance. Use `data-testid` on all interactive elements.",
+    "focus": "Visible focus rings (`focus:ring-2 focus:ring-[#00FF66] focus:outline-none`) on all interactive elements."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1561503412-852800622772?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHw0fHxyZWN5Y2xpbmclMjB3YXN0ZSUyMHNvcnRpbmd8ZW58MHx8fHwxNzgyOTQzNDQyfDA&ixlib=rb-4.1.0&q=85",
+        "category": "Hero Section / Background",
+        "description": "Crushed assorted beverage cans representing scrap."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1722695510527-cc033e43be1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxzY3JhcCUyMG1ldGFsJTIwZWxlY3Ryb25pY3MlMjByZWN5Y2xpbmd8ZW58MHx8fHwxNzg1ODU0NjE0fDA&ixlib=rb-4.1.0&q=85",
+        "category": "Feature / About Section",
+        "description": "Large grabber moving metal scrap."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1717667745934-53091623e8ee?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxzY3JhcCUyMG1ldGFsJTIwZWxlY3Ryb25pY3MlMjByZWN5Y2xpbmd8ZW58MHx8fHwxNzg1ODU0NjE0fDA&ixlib=rb-4.1.0&q=85",
+        "category": "Dashboard Empty State / Electronics Category",
+        "description": "Electronic components for scrap category."
+      }
+    ]
+  },
+  "libraries": {
+    "icons": "lucide-react",
+    "animations": "framer-motion, react-fast-marquee",
+    "charts": "recharts",
+    "ui_components": "shadcn/ui",
+    "toasts": "sonner"
+  },
+  "universal_guidelines_for_main_agent": [
+    "Do not use generic centered layouts for text unless it is the hero heading.",
+    "Use layered design elements with z-index hierarchy and glass-morphism (12-24px blur).",
+    "Do not apply `transition: all`. Use specific transitions like `transition-colors`, `transition-transform`.",
+    "Avoid using emoji characters as icons. Use lucide-react exclusively.",
+    "Ensure generous spacing: use `p-6` or `p-8` inside cards. `py-24` for sections.",
+    "All interactive and key informational elements MUST have `data-testid`.",
+    "Do not use completely transparent backgrounds for overlays or headers."
+  ],
+  "routing_structure": {
+    "/": "Marketing Landing Page (Hero, Features, Stats, Footer with hidden lock icon for admin)",
+    "/seller": "Seller Dashboard & Pickup Order Form (requires mock auth/captcha)",
+    "/collector": "Collector Dashboard (Real-time Feed, Map/Navigate, Masked Call, Toggle Online)",
+    "/admin": "Hidden Admin Portal (Protected by passkey 8762)"
+  }
+}
