@@ -29,10 +29,17 @@ Build a responsive full-stack web application "Smart Scrap" — a platform that 
 - Footer with hidden Lock icon → passkey modal → `/admin`
 - Admin Master Panel: summary cards, tabs for Orders / Users / Collectors, live refresh
 
+## Iteration 2 (2026-08) — 5 Features Added
+- **Real Twilio masked calling**: POST /api/orders/{id}/call places live proxy call (collector → Twilio → seller). Env vars: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`. Missing creds → 503 + `twilio-warning` banner + disabled UI (no fakes).
+- **Embedded Leaflet map** on collector accepted-order cards. Dark CartoDB tiles + OSRM route polyline + Nominatim geocode + "Directions" external button.
+- **Referral rewards**: every seller gets `SSXXXXXX` code, `?ref=CODE` URL prefill, ₹50 credited on referee's first-completed pickup (idempotent — no double credit). Copy-link button, admin Referrals payout table.
+- **SMS alerts**: sent on order accept + complete + referral payout. Log-and-skip when Twilio unconfigured (never blocks main flow).
+- **Admin Live Pricing Editor** (/admin → Pricing tab). Per-kg rates stored in `db.pricing`; new orders use current rate; existing orders keep locked `estimated_amount`.
+- Collector polling reduced 4s→3s for real-time feel. Feed now redacts `seller_mobile` from response entirely — only masked `91 XXXXXX##` sent.
+
 ## Backlog (P1/P2)
-- Real Twilio masked calling integration (currently MOCKED — shows toast + masked number)
-- Google Maps embedded turn-by-turn (currently opens OpenStreetMap in new tab)
-- WebSocket-based push (currently polling every 4-5s)
-- Live pricing engine per city / category negotiation
-- Referral program
-- Email/SMS notifications on order accept
+- Split server.py into routers (auth/orders/admin) + services/twilio.py
+- Server-side geocode cache (db.geocache) to avoid Nominatim throttling
+- Unique index on `users.referral_code`
+- WebSocket push (currently polling)
+- Multi-city dynamic pricing zones
