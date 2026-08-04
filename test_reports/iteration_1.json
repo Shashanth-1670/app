@@ -1,0 +1,37 @@
+{
+  "summary": "Smoke tested Smart Scrap MVP end-to-end. All 3 layers (backend APIs, frontend UI, integration) working. Backend: 18/18 endpoint checks passed including auth (register/login/dup 400/wrong-pass 401), orders (create, seller-only 403 for collectors, /mine, feed with mobile masking '91 XXXXXX11'), accept -> 200 then 409, complete -> stats update. Admin: passkey 8762 -> token; wrong passkey 401; unauth 401; seller token 403; /admin/users, /orders, /collectors, /summary 200. Frontend: Landing renders, all header/footer testids present, About modal opens, Request Pickup opens AuthModal with captcha (parsed '4 + 8 = ?'), seller login transitions into PickupModal, admin lock icon opens passkey modal and navigates to /admin showing live data. Zero console errors.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "GET /api/public/metrics returns tons_recycled/happy_customers/trusted_collectors",
+    "POST /api/auth/register duplicate mobile+role -> 400",
+    "POST /api/auth/login correct -> 200 token + user (no password_hash leaked)",
+    "POST /api/auth/login wrong password -> 401",
+    "GET /api/auth/me with token returns user",
+    "POST /api/orders (seller) creates pending, estimated_amount = 10kg * Paper(12) = 120",
+    "POST /api/orders as collector -> 403",
+    "GET /api/orders/mine sorted desc",
+    "GET /api/orders/feed masks seller_mobile as '91 XXXXXX11'",
+    "POST /api/orders/{id}/accept -> 200; second call -> 409",
+    "POST /api/orders/{id}/complete -> 200",
+    "GET /api/seller/stats aggregates completed (1 order, 10kg, 120)",
+    "GET /api/collector/stats total_profit = 25% of amount (30 from 120)",
+    "POST /api/collector/status toggles online (verified via admin summary active_collectors=1)",
+    "POST /api/admin/verify wrong passkey -> 401; correct '8762' -> token",
+    "GET /api/admin/summary/users/orders/collectors with admin token -> 200",
+    "Admin endpoints without token -> 401; with seller token -> 403",
+    "Frontend Landing loads with header-request-pickup-btn, menu-about/how/terms, admin-lock-icon",
+    "About modal opens from header",
+    "Request Pickup -> AuthModal captcha visible; captcha math parsed and accepted",
+    "Seller login transitions to PickupModal automatically",
+    "Footer lock icon -> passkey modal -> passkey '8762' navigates to /admin",
+    "Admin panel shows totals (Total Users 2, Active Collectors 1, Pending 1, Completed 1) with tabs"
+  ],
+  "failed": [],
+  "action_items": [
+    "Optional: /app/memory/test_credentials.md is currently empty - main agent should record the seller (9999911111/pass123) and collector (8888822222/pass123) credentials for future test runs.",
+    "Optional (informational only): masked calls and OpenStreetMap navigation are MOCKED per problem statement - not exercised in this smoke pass."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
