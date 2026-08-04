@@ -6,7 +6,7 @@ import { Footer } from "../components/Footer";
 import { AuthModal } from "../components/AuthModal";
 import { PickupModal } from "../components/PickupModal";
 import { api, getUser } from "../lib/api";
-import { PhoneOff, Navigation, Zap, Recycle, ArrowRight, Sparkles } from "lucide-react";
+import { PhoneOff, Navigation, Zap, Recycle, ArrowRight, Sparkles, Star, Building2 } from "lucide-react";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1561503412-852800622772?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHw0fHxyZWN5Y2xpbmclMjB3YXN0ZSUyMHNvcnRpbmd8ZW58MHx8fHwxNzgyOTQzNDQyfDA&ixlib=rb-4.1.0&q=85";
 const FEATURE_IMG = "https://images.unsplash.com/photo-1722695510527-cc033e43be1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxzY3JhcCUyMG1ldGFsJTIwZWxlY3Ryb25pY3MlMjByZWN5Y2xpbmd8ZW58MHx8fHwxNzg1ODU0NjE0fDA&ixlib=rb-4.1.0&q=85";
@@ -16,9 +16,11 @@ export default function Landing() {
   const [authOpen, setAuthOpen] = useState(false);
   const [pickupOpen, setPickupOpen] = useState(false);
   const [metrics, setMetrics] = useState({ tons_recycled: 1000, happy_customers: 100, trusted_collectors: 50 });
+  const [topCollectors, setTopCollectors] = useState([]);
 
   useEffect(() => {
     api.get("/public/metrics").then(({ data }) => setMetrics(data)).catch(() => {});
+    api.get("/collectors/top").then(({ data }) => setTopCollectors(data)).catch(() => {});
   }, []);
 
   const requestPickup = () => {
@@ -121,6 +123,36 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* TOP RATED COLLECTORS */}
+      {topCollectors.length > 0 && (
+        <section className="max-w-6xl mx-auto px-5 sm:px-8 py-16 relative z-10" data-testid="top-collectors-section">
+          <div className="mb-10 flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.3em] text-[#00FF66] mb-3">Community favorites</div>
+              <h2 className="font-display text-4xl md:text-5xl font-bold">Top-rated collectors</h2>
+              <p className="text-white/50 text-sm mt-2 max-w-md">Sellers give five stars to the collectors who show up on time and pay fairly.</p>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {topCollectors.map((c, i) => (
+              <motion.div key={c.id} initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }} data-testid={`top-collector-${i}`} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-[#00FF66]/40 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="h-10 w-10 rounded-lg bg-[#00FF66]/10 border border-[#00FF66]/30 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-[#00FF66]"/>
+                  </div>
+                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#00FF66]/10 border border-[#00FF66]/30 text-[#00FF66] text-xs font-semibold">
+                    <Star className="h-3 w-3 fill-[#00FF66]"/>{c.avg_rating.toFixed(1)}
+                  </div>
+                </div>
+                <div className="font-display text-lg font-bold">{c.company_name || c.name}</div>
+                <div className="text-xs text-white/50 mt-1 line-clamp-1">{c.address}</div>
+                <div className="text-xs text-white/40 mt-3">{c.ratings_count} rating{c.ratings_count === 1 ? "" : "s"}</div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* HOW IT WORKS */}
       <section className="max-w-6xl mx-auto px-5 sm:px-8 py-20 relative z-10" data-testid="how-it-works-section">
         <div className="mb-14 flex items-end justify-between flex-wrap gap-4">
@@ -145,7 +177,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Final CTA */}
       <section className="max-w-4xl mx-auto px-5 sm:px-8 py-24 text-center relative z-10">
         <Recycle className="h-12 w-12 text-[#00FF66] mx-auto animate-spin-slow" />
         <h2 className="font-display text-4xl md:text-5xl font-black mt-6">Ready to declutter?</h2>

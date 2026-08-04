@@ -3,12 +3,14 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { AuthModal } from "../components/AuthModal";
 import { PickupModal } from "../components/PickupModal";
+import { RatingModal } from "../components/RatingModal";
+import { EmailSettings } from "../components/EmailSettings";
 import { api, getUser } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Package, TrendingUp, Coins, Weight, PlusCircle, Clock, CheckCircle2, Truck, Gift, Copy, Users } from "lucide-react";
+import { Package, TrendingUp, Coins, Weight, PlusCircle, Clock, CheckCircle2, Truck, Gift, Copy, Users, Star } from "lucide-react";
 
 const statusColors = {
   pending: "bg-yellow-500/10 text-yellow-300 border-yellow-500/30",
@@ -21,7 +23,11 @@ export default function Seller() {
   const [authOpen, setAuthOpen] = useState(!user || user?.role !== "seller");
   const [pickupOpen, setPickupOpen] = useState(false);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ total_orders_completed: 0, total_orders: 0, total_weight_kg: 0, scrap_earnings: 0, referral_earnings: 0, total_earnings: 0, referral_code: "", referrals_count: 0 });
+  const [stats, setStats] = useState({
+    total_orders_completed: 0, total_orders: 0, total_weight_kg: 0, scrap_earnings: 0,
+    referral_earnings: 0, total_earnings: 0, referral_code: "", referrals_count: 0, email: "",
+  });
+  const [ratingOrder, setRatingOrder] = useState(null);
 
   const load = async () => {
     if (!user || user.role !== "seller") return;
@@ -65,7 +71,6 @@ export default function Seller() {
               </Button>
             </div>
 
-            {/* Stats + Referral */}
             <div className="grid md:grid-cols-4 gap-4 mb-6" data-testid="seller-stats">
               <StatCard icon={Package} label="Total Orders" value={stats.total_orders} testId="stat-total-orders"/>
               <StatCard icon={CheckCircle2} label="Completed" value={stats.total_orders_completed} testId="stat-completed"/>
@@ -73,7 +78,8 @@ export default function Seller() {
               <StatCard icon={Coins} label="Total Earnings" value={`₹${stats.total_earnings}`} highlight testId="stat-earnings"/>
             </div>
 
-            {/* Referral Card */}
+            <EmailSettings stats={stats} onUpdated={load} />
+
             <div className="mb-8 rounded-2xl border border-[#00FF66]/30 bg-gradient-to-br from-[#00FF66]/10 via-[#00FF66]/5 to-transparent p-6" data-testid="referral-card">
               <div className="flex items-start justify-between flex-wrap gap-4">
                 <div className="flex items-start gap-4">
@@ -118,10 +124,27 @@ export default function Seller() {
                       <div>
                         <div className="font-semibold">{o.category} · {o.weight_kg} kg</div>
                         <div className="text-xs text-white/50 flex items-center gap-2"><Clock className="h-3 w-3"/>{new Date(o.created_at).toLocaleString()}</div>
-                        {o.collector_name && <div className="text-xs text-white/60 mt-1">Collector: {o.collector_name} · {o.collector_mobile}</div>}
+                        {o.collector_name && (
+                          <div className="text-xs text-white/60 mt-1 flex items-center gap-2">
+                            <span>Collector: {o.collector_name}</span>
+                            {o.collector_avg_rating > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[#00FF66]"><Star className="h-3 w-3 fill-[#00FF66]"/>{o.collector_avg_rating.toFixed(1)} ({o.collector_ratings_count})</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {o.status === "completed" && !o.rating && (
+                        <Button data-testid={`rate-${o.id}`} size="sm" variant="outline" onClick={() => setRatingOrder(o)} className="rounded-full border-[#00FF66]/40 bg-[#00FF66]/10 text-[#00FF66] hover:bg-[#00FF66]/20">
+                          <Star className="h-3 w-3 mr-1"/>Rate pickup
+                        </Button>
+                      )}
+                      {o.rating && (
+                        <div data-testid={`rated-${o.id}`} className="inline-flex items-center gap-1 text-xs text-white/60">
+                          You rated: <span className="text-[#00FF66] inline-flex items-center gap-0.5"><Star className="h-3 w-3 fill-[#00FF66]"/>{o.rating}</span>
+                        </div>
+                      )}
                       <div className="text-right">
                         <div className="text-xs text-white/50">Est. amount</div>
                         <div className="text-[#00FF66] font-bold">₹{o.estimated_amount}</div>
@@ -140,6 +163,7 @@ export default function Seller() {
 
       <AuthModal open={authOpen} onOpenChange={(v) => { setAuthOpen(v); if (!v) setUser(getUser()); }} role="seller" onSuccess={(u) => setUser(u)} />
       <PickupModal open={pickupOpen} onOpenChange={setPickupOpen} user={user} onCreated={load} />
+      <RatingModal open={!!ratingOrder} onOpenChange={(v) => !v && setRatingOrder(null)} order={ratingOrder} onRated={load} />
     </div>
   );
 }

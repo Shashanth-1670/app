@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { Users, Truck, Package, Activity, LogOut, Coins, Check, Gift } from "lucide-react";
+import { Users, Truck, Package, Activity, LogOut, Coins, Check, Gift, Star, Mail } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 
@@ -17,20 +17,23 @@ export default function Admin() {
   const [collectors, setCollectors] = useState([]);
   const [pricing, setPricing] = useState([]);
   const [referrals, setReferrals] = useState([]);
+  const [ratings, setRatings] = useState([]);
   const [drafts, setDrafts] = useState({});
+  const [broadcasting, setBroadcasting] = useState(false);
   const navigate = useNavigate();
 
   const load = async () => {
     try {
-      const [s, u, o, c, p, r] = await Promise.all([
+      const [s, u, o, c, p, r, rt] = await Promise.all([
         adminApi.get("/admin/summary"),
         adminApi.get("/admin/users"),
         adminApi.get("/admin/orders"),
         adminApi.get("/admin/collectors"),
         adminApi.get("/admin/pricing"),
         adminApi.get("/admin/referrals"),
+        adminApi.get("/admin/ratings"),
       ]);
-      setSummary(s.data); setUsers(u.data); setOrders(o.data); setCollectors(c.data); setPricing(p.data); setReferrals(r.data);
+      setSummary(s.data); setUsers(u.data); setOrders(o.data); setCollectors(c.data); setPricing(p.data); setReferrals(r.data); setRatings(rt.data);
     } catch (e) {
       localStorage.removeItem("ss_admin_token");
       navigate("/");
@@ -63,11 +66,29 @@ export default function Admin() {
             <div className="text-xs uppercase tracking-[0.3em] text-[#00FF66]">Admin Control</div>
             <h1 className="font-display text-4xl font-bold">Master Panel</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {summary && (
-              <Badge className={summary.twilio_configured ? "bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30" : "bg-yellow-500/10 text-yellow-300 border-yellow-500/30"}>
-                Twilio: {summary.twilio_configured ? "Active" : "Not Configured"}
-              </Badge>
+              <>
+                <Badge data-testid="badge-twilio" className={summary.twilio_configured ? "bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30" : "bg-yellow-500/10 text-yellow-300 border-yellow-500/30"}>
+                  Twilio: {summary.twilio_configured ? "Active" : "Off"}
+                </Badge>
+                <Badge data-testid="badge-email" className={summary.email_configured ? "bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30" : "bg-yellow-500/10 text-yellow-300 border-yellow-500/30"}>
+                  Email: {summary.email_configured ? "Active" : "Off"}
+                </Badge>
+              </>
+            )}
+            {summary?.email_configured && (
+              <Button data-testid="admin-broadcast-weekly-btn" size="sm" variant="outline" onClick={async () => {
+                setBroadcasting(true);
+                try {
+                  const { data } = await adminApi.post("/admin/weekly-summary/broadcast");
+                  toast.success(`Broadcast: ${data.sent} sent, ${data.failed} failed`);
+                } catch (e) {
+                  toast.error(e.response?.data?.detail || "Broadcast failed");
+                } finally { setBroadcasting(false); }
+              }} disabled={broadcasting} className="rounded-full border-white/15 bg-white/5">
+                <Mail className="h-4 w-4 mr-1"/>{broadcasting ? "Sending..." : "Broadcast Weekly"}
+              </Button>
             )}
             <Button data-testid="admin-logout-btn" onClick={logout} variant="outline" className="rounded-full border-white/15 bg-white/5"><LogOut className="h-4 w-4 mr-1"/>Exit</Button>
           </div>
@@ -89,6 +110,7 @@ export default function Admin() {
             <TabsTrigger value="collectors" data-testid="tab-collectors">Collectors</TabsTrigger>
             <TabsTrigger value="pricing" data-testid="tab-pricing">Pricing</TabsTrigger>
             <TabsTrigger value="referrals" data-testid="tab-referrals">Referrals</TabsTrigger>
+            <TabsTrigger value="ratings" data-testid="tab-ratings">Ratings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders">
@@ -145,6 +167,12 @@ export default function Admin() {
                   </div>
                   <div className="text-xs text-white/50">{c.name} · {c.mobile}</div>
                   <div className="text-xs text-white/50 mt-1">{c.address}</div>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="text-white/40">Rating</span>
+                    <span className="inline-flex items-center gap-1 text-[#00FF66] font-semibold">
+                      <Star className="h-3 w-3 fill-[#00FF66]"/>{c.avg_rating ? c.avg_rating.toFixed(1) : "—"} <span className="text-white/40 font-normal">({c.ratings_count || 0})</span>
+                    </span>
+                  </div>
                 </div>
               ))}
               {collectors.length === 0 && <div className="text-white/40 col-span-full text-center p-8">No collectors yet.</div>}
@@ -181,6 +209,35 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ratings">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden" data-testid="admin-ratings-panel">
+              <div className="p-4 border-b border-white/10 flex items-center gap-2">
+                <Star className="h-5 w-5 text-[#00FF66]"/>
+                <h3 className="font-display text-lg font-bold">Seller Ratings</h3>
+                <span className="text-xs text-white/40">· {ratings.length} total</span>
+              </div>
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase tracking-widest text-white/40 border-b border-white/10">
+                  <tr><th className="p-4 text-left">Collector</th><th className="p-4 text-left">Stars</th><th className="p-4 text-left">Comment</th><th className="p-4 text-left">Date</th></tr>
+                </thead>
+                <tbody>
+                  {ratings.map(rt => {
+                    const c = collectors.find(x => x.id === rt.collector_id);
+                    return (
+                      <tr key={rt.id} className="border-b border-white/5">
+                        <td className="p-4">{c?.company_name || c?.name || rt.collector_id.slice(0, 8)}</td>
+                        <td className="p-4 text-[#00FF66] font-bold inline-flex items-center gap-1"><Star className="h-3 w-3 fill-[#00FF66]"/>{rt.rating}</td>
+                        <td className="p-4 text-white/60 max-w-md">{rt.comment || "—"}</td>
+                        <td className="p-4 text-xs text-white/50">{new Date(rt.created_at).toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                  {ratings.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-white/40">No ratings yet.</td></tr>}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
 

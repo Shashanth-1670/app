@@ -9,7 +9,7 @@ import { Switch } from "../components/ui/switch";
 import { Badge } from "../components/ui/badge";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Package, Phone, CheckCircle2, X, Building2, TrendingUp, Weight, Coins, Clock, Loader2 } from "lucide-react";
+import { Package, Phone, CheckCircle2, X, Building2, TrendingUp, Weight, Coins, Clock, Loader2, Star } from "lucide-react";
 
 export default function Collector() {
   const [user, setUser] = useState(getUser());
@@ -113,10 +113,19 @@ export default function Collector() {
             )}
 
             {stats.total_pickups > 0 && (
-              <div className="grid grid-cols-3 gap-4 mb-8" data-testid="collector-stats">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-testid="collector-stats">
                 <StatCard icon={CheckCircle2} label="Completed Pickups" value={stats.total_pickups} testId="c-stat-pickups"/>
                 <StatCard icon={Weight} label="Volume Processed" value={`${stats.total_weight_kg} kg`} testId="c-stat-weight"/>
                 <StatCard icon={Coins} label="Total Profit" value={`₹${stats.total_profit}`} highlight testId="c-stat-profit"/>
+                <div data-testid="c-stat-rating" className="p-6 rounded-2xl border border-white/10 bg-white/[0.02]">
+                  <div className="flex items-center gap-2 text-white/50 text-xs uppercase tracking-widest mb-3">
+                    <Star className="h-4 w-4"/>My Rating
+                  </div>
+                  <div className="font-display text-3xl font-black text-[#00FF66] flex items-baseline gap-2">
+                    {stats.avg_rating > 0 ? stats.avg_rating.toFixed(1) : "—"}
+                    <span className="text-xs text-white/40 font-normal">from {stats.ratings_count || 0}</span>
+                  </div>
+                </div>
               </div>
             )}
 
