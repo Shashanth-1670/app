@@ -7,7 +7,8 @@ import { api, getUser } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { motion } from "framer-motion";
-import { Package, TrendingUp, Coins, Weight, PlusCircle, Clock, CheckCircle2, Truck } from "lucide-react";
+import { toast } from "sonner";
+import { Package, TrendingUp, Coins, Weight, PlusCircle, Clock, CheckCircle2, Truck, Gift, Copy, Users } from "lucide-react";
 
 const statusColors = {
   pending: "bg-yellow-500/10 text-yellow-300 border-yellow-500/30",
@@ -20,7 +21,7 @@ export default function Seller() {
   const [authOpen, setAuthOpen] = useState(!user || user?.role !== "seller");
   const [pickupOpen, setPickupOpen] = useState(false);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ total_orders_completed: 0, total_orders: 0, total_weight_kg: 0, total_earnings: 0 });
+  const [stats, setStats] = useState({ total_orders_completed: 0, total_orders: 0, total_weight_kg: 0, scrap_earnings: 0, referral_earnings: 0, total_earnings: 0, referral_code: "", referrals_count: 0 });
 
   const load = async () => {
     if (!user || user.role !== "seller") return;
@@ -30,9 +31,13 @@ export default function Seller() {
     } catch (e) {}
   };
 
-  useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [user]);
+  useEffect(() => { load(); const t = setInterval(load, 3500); return () => clearInterval(t); }, [user]);
 
-  const hasCompleted = stats.total_orders_completed > 0;
+  const copyReferral = () => {
+    const link = `${window.location.origin}/?ref=${stats.referral_code}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Referral link copied!");
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white grain">
@@ -49,10 +54,10 @@ export default function Seller() {
           </div>
         ) : (
           <>
-            <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
+            <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
               <div>
                 <div className="text-xs uppercase tracking-[0.3em] text-[#00FF66] mb-2">Seller Dashboard</div>
-                <h1 className="font-display text-4xl font-bold">Hi, {user.name} 👋</h1>
+                <h1 className="font-display text-4xl font-bold">Hi, {user.name}</h1>
                 <p className="text-white/50 mt-1 text-sm">{user.address}</p>
               </div>
               <Button data-testid="seller-new-pickup-btn" onClick={() => setPickupOpen(true)} className="rounded-full bg-[#00FF66] text-black hover:bg-[#00E055] font-semibold">
@@ -60,14 +65,38 @@ export default function Seller() {
               </Button>
             </div>
 
-            {hasCompleted && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10" data-testid="seller-stats">
-                <StatCard icon={Package} label="Total Orders" value={stats.total_orders} testId="stat-total-orders"/>
-                <StatCard icon={CheckCircle2} label="Completed" value={stats.total_orders_completed} testId="stat-completed"/>
-                <StatCard icon={Weight} label="Weight Sold" value={`${stats.total_weight_kg} kg`} testId="stat-weight"/>
-                <StatCard icon={Coins} label="Total Earnings" value={`₹${stats.total_earnings}`} highlight testId="stat-earnings"/>
+            {/* Stats + Referral */}
+            <div className="grid md:grid-cols-4 gap-4 mb-6" data-testid="seller-stats">
+              <StatCard icon={Package} label="Total Orders" value={stats.total_orders} testId="stat-total-orders"/>
+              <StatCard icon={CheckCircle2} label="Completed" value={stats.total_orders_completed} testId="stat-completed"/>
+              <StatCard icon={Weight} label="Weight Sold" value={`${stats.total_weight_kg} kg`} testId="stat-weight"/>
+              <StatCard icon={Coins} label="Total Earnings" value={`₹${stats.total_earnings}`} highlight testId="stat-earnings"/>
+            </div>
+
+            {/* Referral Card */}
+            <div className="mb-8 rounded-2xl border border-[#00FF66]/30 bg-gradient-to-br from-[#00FF66]/10 via-[#00FF66]/5 to-transparent p-6" data-testid="referral-card">
+              <div className="flex items-start justify-between flex-wrap gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-[#00FF66]/20 border border-[#00FF66]/40 flex items-center justify-center">
+                    <Gift className="h-6 w-6 text-[#00FF66]"/>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-[#00FF66] mb-1">Refer &amp; Earn</div>
+                    <div className="font-display text-xl font-bold">Get ₹50 for every friend who books their first pickup.</div>
+                    <div className="text-xs text-white/60 mt-1 flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1"><Users className="h-3 w-3"/>{stats.referrals_count} referred</span>
+                      <span className="inline-flex items-center gap-1"><Coins className="h-3 w-3 text-[#00FF66]"/>₹{stats.referral_earnings} earned</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div data-testid="referral-code" className="font-mono tracking-widest bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[#00FF66]">
+                    {stats.referral_code || "—"}
+                  </div>
+                  <Button data-testid="copy-referral-btn" onClick={copyReferral} variant="outline" className="rounded-full border-white/15 bg-white/5"><Copy className="h-4 w-4 mr-1"/>Copy link</Button>
+                </div>
               </div>
-            )}
+            </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.02]">
               <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -89,6 +118,7 @@ export default function Seller() {
                       <div>
                         <div className="font-semibold">{o.category} · {o.weight_kg} kg</div>
                         <div className="text-xs text-white/50 flex items-center gap-2"><Clock className="h-3 w-3"/>{new Date(o.created_at).toLocaleString()}</div>
+                        {o.collector_name && <div className="text-xs text-white/60 mt-1">Collector: {o.collector_name} · {o.collector_mobile}</div>}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">

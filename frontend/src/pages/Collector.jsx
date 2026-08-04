@@ -2,13 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { AuthModal } from "../components/AuthModal";
+import { MapCard } from "../components/MapCard";
 import { api, getUser, saveAuth } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Switch } from "../components/ui/switch";
 import { Badge } from "../components/ui/badge";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Package, Phone, Navigation, CheckCircle2, X, Building2, TrendingUp, Weight, Coins, Clock } from "lucide-react";
+import { Package, Phone, CheckCircle2, X, Building2, TrendingUp, Weight, Coins, Clock, Loader2 } from "lucide-react";
 
 export default function Collector() {
   const [user, setUser] = useState(getUser());
@@ -17,8 +18,16 @@ export default function Collector() {
   const [feed, setFeed] = useState([]);
   const [accepted, setAccepted] = useState([]);
   const [stats, setStats] = useState({ total_pickups: 0, total_weight_kg: 0, total_profit: 0 });
+  const [callingId, setCallingId] = useState(null);
+  const [twilioReady, setTwilioReady] = useState(false);
 
   useEffect(() => { if (user?.role === "collector") setOnline(!!user.online); }, [user]);
+
+  useEffect(() => {
+    if (user?.role === "collector") {
+      api.get("/twilio/status").then(({ data }) => setTwilioReady(data.configured)).catch(() => {});
+    }
+  }, [user]);
 
   const load = async () => {
     if (!user || user.role !== "collector") return;
@@ -29,10 +38,10 @@ export default function Collector() {
         api.get("/collector/stats"),
       ]);
       setFeed(f.data); setAccepted(a.data); setStats(s.data);
-    } catch (e) {}
+    } catch (e) { /* silent */ }
   };
 
-  useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, [user, online]);
+  useEffect(() => { load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [user, online]);
 
   const toggleOnline = async (v) => {
     setOnline(v);
@@ -44,24 +53,26 @@ export default function Collector() {
   };
 
   const accept = async (id) => {
-    try {
-      await api.post(`/orders/${id}/accept`);
-      toast.success("Order accepted!");
-      load();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed to accept");
-      load();
-    }
+    try { await api.post(`/orders/${id}/accept`); toast.success("Order accepted!"); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Failed to accept"); load(); }
   };
   const reject = async (id) => {
     try { await api.post(`/orders/${id}/reject`); toast.message("Order rejected"); load(); } catch { toast.error("Failed"); }
   };
   const complete = async (id) => {
-    try { await api.post(`/orders/${id}/complete`); toast.success("Order completed! Metrics updated."); load(); } catch { toast.error("Failed"); }
+    try { await api.post(`/orders/${id}/complete`); toast.success("Order completed!"); load(); } catch { toast.error("Failed"); }
   };
 
-  const maskedCall = (mobile) => toast.message(`Connecting via masked proxy: ${mobile}`, { description: "Real number stays private." });
-  const navigateTo = (address) => window.open(`https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}`, "_blank");
+  const maskedCall = async (orderId) => {
+    setCallingId(orderId);
+    try {
+      const { data } = await api.post(`/orders/${orderId}/call`);
+      toast.success(data.message || "Call initiated — your phone will ring shortly.");
+    } catch (e) {
+      const detail = e.response?.data?.detail || "Failed to place call";
+      toast.error(detail);
+    } finally { setCallingId(null); }
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white grain">
@@ -95,6 +106,12 @@ export default function Collector() {
               </div>
             </div>
 
+            {!twilioReady && (
+              <div className="mb-6 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-yellow-200 text-sm" data-testid="twilio-warning">
+                Masked calling is currently disabled. Admin must configure Twilio credentials to enable real calls.
+              </div>
+            )}
+
             {stats.total_pickups > 0 && (
               <div className="grid grid-cols-3 gap-4 mb-8" data-testid="collector-stats">
                 <StatCard icon={CheckCircle2} label="Completed Pickups" value={stats.total_pickups} testId="c-stat-pickups"/>
@@ -107,10 +124,10 @@ export default function Collector() {
               {/* Feed */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.02]">
                 <div className="p-5 border-b border-white/10 flex items-center justify-between">
-                  <h2 className="font-display text-lg font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-[#00FF66]"/>Incoming Requests</h2>
-                  <span className="text-xs text-white/40">{feed.length} available</span>
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-[#00FF66]"/>Live Requests</h2>
+                  <span className="text-xs text-white/40">{online ? `${feed.length} live` : "Offline"}</span>
                 </div>
-                <div data-testid="collector-feed" className="max-h-[70vh] overflow-y-auto no-scrollbar">
+                <div data-testid="collector-feed" className="max-h-[75vh] overflow-y-auto no-scrollbar">
                   {!online && (
                     <div className="p-8 text-center text-white/50 text-sm">
                       Toggle <span className="text-[#00FF66]">Online</span> to view live requests.
@@ -139,7 +156,6 @@ export default function Collector() {
                       <div className="flex gap-2 flex-wrap">
                         <Button data-testid={`accept-${o.id}`} onClick={() => accept(o.id)} size="sm" className="rounded-full bg-[#00FF66] text-black hover:bg-[#00E055] font-semibold"><CheckCircle2 className="h-4 w-4 mr-1"/>Accept</Button>
                         <Button data-testid={`reject-${o.id}`} onClick={() => reject(o.id)} variant="outline" size="sm" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10"><X className="h-4 w-4 mr-1"/>Reject</Button>
-                        <Button data-testid={`call-${o.id}`} onClick={() => maskedCall(o.seller_mobile_masked)} variant="outline" size="sm" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10"><Phone className="h-4 w-4 mr-1"/>Masked Call</Button>
                       </div>
                     </motion.div>
                   ))}
@@ -152,22 +168,28 @@ export default function Collector() {
                   <h2 className="font-display text-lg font-bold flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-[#00FF66]"/>My Active Pickups</h2>
                   <span className="text-xs text-white/40">{accepted.length} ongoing</span>
                 </div>
-                <div data-testid="collector-accepted" className="max-h-[70vh] overflow-y-auto no-scrollbar">
+                <div data-testid="collector-accepted" className="max-h-[75vh] overflow-y-auto no-scrollbar">
                   {accepted.length === 0 ? (
                     <div className="p-8 text-center text-white/50 text-sm">No active pickups yet.</div>
                   ) : accepted.map((o) => (
-                    <div key={o.id} data-testid={`accepted-${o.id}`} className="p-5 border-b border-white/5">
-                      <div className="flex items-start justify-between mb-3">
+                    <div key={o.id} data-testid={`accepted-${o.id}`} className="p-5 border-b border-white/5 space-y-3">
+                      <div className="flex items-start justify-between">
                         <div>
                           <div className="font-semibold">{o.category} · {o.weight_kg} kg</div>
-                          <div className="text-xs text-white/50">{o.seller_name} · {o.seller_address}</div>
+                          <div className="text-xs text-white/50">{o.seller_name}</div>
+                          <div className="text-xs text-white/60 mt-1">{o.seller_address}</div>
                           <div className="text-xs font-mono text-white/50 mt-1">📞 {o.seller_mobile_masked}</div>
                         </div>
                         <Badge className="bg-blue-500/10 text-blue-300 border-blue-500/30">accepted</Badge>
                       </div>
+
+                      <MapCard pickupAddress={o.seller_address} collectorAddress={user.address} testId={`map-${o.id}`} />
+
                       <div className="flex gap-2 flex-wrap">
-                        <Button data-testid={`navigate-${o.id}`} onClick={() => navigateTo(o.seller_address)} size="sm" variant="outline" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10"><Navigation className="h-4 w-4 mr-1"/>Navigate</Button>
-                        <Button data-testid={`call-a-${o.id}`} onClick={() => maskedCall(o.seller_mobile_masked)} size="sm" variant="outline" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10"><Phone className="h-4 w-4 mr-1"/>Masked Call</Button>
+                        <Button data-testid={`call-a-${o.id}`} onClick={() => maskedCall(o.id)} disabled={callingId === o.id || !twilioReady} size="sm" variant="outline" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-50">
+                          {callingId === o.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin"/> : <Phone className="h-4 w-4 mr-1"/>}
+                          {twilioReady ? "Masked Call" : "Call Disabled"}
+                        </Button>
                         <Button data-testid={`complete-${o.id}`} onClick={() => complete(o.id)} size="sm" className="rounded-full bg-[#00FF66] text-black hover:bg-[#00E055] font-semibold"><CheckCircle2 className="h-4 w-4 mr-1"/>Complete Order</Button>
                       </div>
                     </div>
