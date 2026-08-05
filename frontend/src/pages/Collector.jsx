@@ -9,6 +9,7 @@ import { Switch } from "../components/ui/switch";
 import { Badge } from "../components/ui/badge";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useCall } from "../components/CallProvider";
 import { Package, Phone, CheckCircle2, X, Building2, TrendingUp, Weight, Coins, Clock, Loader2, Star } from "lucide-react";
 
 export default function Collector() {
@@ -20,6 +21,7 @@ export default function Collector() {
   const [stats, setStats] = useState({ total_pickups: 0, total_weight_kg: 0, total_profit: 0 });
   const [callingId, setCallingId] = useState(null);
   const [twilioReady, setTwilioReady] = useState(false);
+  const call = useCall();
 
   useEffect(() => { if (user?.role === "collector") setOnline(!!user.online); }, [user]);
 
@@ -66,11 +68,10 @@ export default function Collector() {
   const maskedCall = async (orderId) => {
     setCallingId(orderId);
     try {
-      const { data } = await api.post(`/orders/${orderId}/call`);
-      toast.success(data.message || "Call initiated — your phone will ring shortly.");
+      await call.startCall(orderId);
+      toast.message("Ringing seller… wait for them to accept.");
     } catch (e) {
-      const detail = e.response?.data?.detail || "Failed to place call";
-      toast.error(detail);
+      toast.error(e.response?.data?.detail || "Failed to place call");
     } finally { setCallingId(null); }
   };
 
@@ -107,8 +108,8 @@ export default function Collector() {
             </div>
 
             {!twilioReady && (
-              <div className="mb-6 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-yellow-200 text-sm" data-testid="twilio-warning">
-                Masked calling is currently disabled. Admin must configure Twilio credentials to enable real calls.
+              <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-emerald-200 text-sm" data-testid="rtc-info">
+                Calls are placed browser-to-browser via WebRTC (encrypted, no SIM required). The seller must be logged in on their device to receive it.
               </div>
             )}
 
@@ -195,9 +196,9 @@ export default function Collector() {
                       <MapCard pickupAddress={o.seller_address} collectorAddress={user.address} testId={`map-${o.id}`} />
 
                       <div className="flex gap-2 flex-wrap">
-                        <Button data-testid={`call-a-${o.id}`} onClick={() => maskedCall(o.id)} disabled={callingId === o.id || !twilioReady} size="sm" variant="outline" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-50">
+                        <Button data-testid={`call-a-${o.id}`} onClick={() => maskedCall(o.id)} disabled={callingId === o.id} size="sm" variant="outline" className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-50">
                           {callingId === o.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin"/> : <Phone className="h-4 w-4 mr-1"/>}
-                          {twilioReady ? "Masked Call" : "Call Disabled"}
+                          Call Seller
                         </Button>
                         <Button data-testid={`complete-${o.id}`} onClick={() => complete(o.id)} size="sm" className="rounded-full bg-[#00FF66] text-black hover:bg-[#00E055] font-semibold"><CheckCircle2 className="h-4 w-4 mr-1"/>Complete Order</Button>
                       </div>

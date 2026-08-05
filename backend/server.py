@@ -816,6 +816,219 @@ async def admin_ratings(_=Depends(require_admin)):
     return rows
 
 
+# ---------------- Admin CRUD (full control) ----------------
+class UserAdminUpdate(BaseModel):
+    name: Optional[str] = None
+    mobile: Optional[str] = None
+    address: Optional[str] = None
+    company_name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[Literal["seller", "collector"]] = None
+    online: Optional[bool] = None
+
+
+class OrderAdminUpdate(BaseModel):
+    category: Optional[str] = None
+    weight_kg: Optional[float] = None
+    price_per_kg: Optional[float] = None
+    status: Optional[Literal["pending", "accepted", "completed"]] = None
+    notes: Optional[str] = None
+
+
+@api_router.put("/admin/users/{user_id}")
+async def admin_update_user(user_id: str, payload: UserAdminUpdate, _=Depends(require_admin)):
+    updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    r = await db.users.update_one({"id": user_id}, {"$set": updates})
+    if r.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Propagate name/mobile/company changes to related orders
+    prop = {}
+    if "name" in updates: prop["seller_name"] = updates["name"]
+    if "mobile" in updates:
+        prop["seller_mobile"] = updates["mobile"]
+        await db.orders.update_many({"collector_id": user_id}, {"$set": {"collector_mobile": updates["mobile"]}})
+    if "company_name" in updates or "name" in updates:
+        new_name = updates.get("company_name") or updates.get("name")
+        if new_name:
+            await db.orders.update_many({"collector_id": user_id}, {"$set": {"collector_name": new_name}})
+    if prop:
+        await db.orders.update_many({"seller_id": user_id}, {"$set": prop})
+    return {"ok": True}
+
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, _=Depends(require_admin)):
+    u = await db.users.find_one({"id": user_id}, {"_id": 0, "role": 1})
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Cascade
+    del_orders = await db.orders.delete_many({"$or": [{"seller_id": user_id}, {"collector_id": user_id}]})
+    del_ratings = await db.ratings.delete_many({"$or": [{"seller_id": user_id}, {"collector_id": user_id}]})
+    # Roll back referral bonuses that referred this user
+    async for r in db.referrals.find({"referee_id": user_id}, {"_id": 0}):
+        await db.users.update_one({"id": r["referrer_id"]}, {"$inc": {"referral_earnings": -float(r.get("bonus", 0))}})
+    del_refs = await db.referrals.delete_many({"$or": [{"referrer_id": user_id}, {"referee_id": user_id}]})
+    await db.call_logs.delete_many({"caller_id": user_id})
+    await db.rtc_signals.delete_many({"$or": [{"from_id": user_id}, {"to_id": user_id}]})
+    await db.users.update_many({"referred_by": user_id}, {"$set": {"referred_by": None}})
+    await db.users.delete_one({"id": user_id})
+    # Recompute all collector ratings (in case ratings removed involved others)
+    async for c in db.users.find({"role": "collector"}, {"_id": 0, "id": 1}):
+        await recompute_collector_rating(c["id"])
+    return {"ok": True, "deleted": {"orders": del_orders.deleted_count, "ratings": del_ratings.deleted_count, "referrals": del_refs.deleted_count}}
+
+
+@api_router.put("/admin/orders/{order_id}")
+async def admin_update_order(order_id: str, payload: OrderAdminUpdate, _=Depends(require_admin)):
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    # Recompute estimated_amount if pricing-affecting fields change
+    new_weight = updates.get("weight_kg", order["weight_kg"])
+    new_price = updates.get("price_per_kg", order.get("price_per_kg") or await get_price(updates.get("category", order["category"])))
+    updates["weight_kg"] = float(new_weight)
+    updates["price_per_kg"] = float(new_price)
+    updates["estimated_amount"] = round(float(new_weight) * float(new_price), 2)
+    if updates.get("status") == "completed" and not order.get("completed_at"):
+        updates["completed_at"] = now_iso()
+    if updates.get("status") == "accepted" and not order.get("accepted_at"):
+        updates["accepted_at"] = now_iso()
+    await db.orders.update_one({"id": order_id}, {"$set": updates})
+    return {"ok": True}
+
+
+@api_router.delete("/admin/orders/{order_id}")
+async def admin_delete_order(order_id: str, _=Depends(require_admin)):
+    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not o:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await db.orders.delete_one({"id": order_id})
+    await db.ratings.delete_many({"order_id": order_id})
+    await db.call_logs.delete_many({"order_id": order_id})
+    await db.rtc_signals.delete_many({"order_id": order_id})
+    # Rollback referral bonus if this order triggered one
+    ref = await db.referrals.find_one({"order_id": order_id}, {"_id": 0})
+    if ref:
+        await db.users.update_one({"id": ref["referrer_id"]}, {"$inc": {"referral_earnings": -float(ref.get("bonus", 0))}})
+        await db.referrals.delete_one({"id": ref["id"]})
+    if o.get("collector_id"):
+        await recompute_collector_rating(o["collector_id"])
+    return {"ok": True}
+
+
+@api_router.delete("/admin/ratings/{rating_id}")
+async def admin_delete_rating(rating_id: str, _=Depends(require_admin)):
+    r = await db.ratings.find_one({"id": rating_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(status_code=404, detail="Rating not found")
+    await db.ratings.delete_one({"id": rating_id})
+    await db.orders.update_one({"id": r["order_id"]}, {"$set": {"rating": None, "rating_comment": ""}})
+    await recompute_collector_rating(r["collector_id"])
+    return {"ok": True}
+
+
+@api_router.delete("/admin/referrals/{ref_id}")
+async def admin_delete_referral(ref_id: str, _=Depends(require_admin)):
+    r = await db.referrals.find_one({"id": ref_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(status_code=404, detail="Referral not found")
+    await db.users.update_one({"id": r["referrer_id"]}, {"$inc": {"referral_earnings": -float(r.get("bonus", 0))}})
+    await db.referrals.delete_one({"id": ref_id})
+    return {"ok": True}
+
+
+@api_router.delete("/admin/pricing/{category}")
+async def admin_delete_pricing(category: str, _=Depends(require_admin)):
+    r = await db.pricing.delete_one({"category": category})
+    if r.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return {"ok": True}
+
+
+# ---------------- WebRTC Signaling (real browser-to-browser voice) ----------------
+class RTCSignal(BaseModel):
+    to_id: str
+    order_id: Optional[str] = None
+    type: Literal["call", "answer", "ice", "hangup", "reject", "busy"]
+    payload: Optional[dict] = None
+
+
+@api_router.post("/rtc/call/{order_id}")
+async def rtc_start_call(order_id: str, user=Depends(get_current_user)):
+    """Initiate a WebRTC call for a real order. Determines the other party from the order."""
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if user["role"] == "collector":
+        if order.get("collector_id") != user["id"]:
+            raise HTTPException(status_code=403, detail="Not your order")
+        to_id = order["seller_id"]
+    elif user["role"] == "seller":
+        if order["seller_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="Not your order")
+        if not order.get("collector_id"):
+            raise HTTPException(status_code=400, detail="No collector assigned yet")
+        to_id = order["collector_id"]
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    # Ensure callee exists and is not the same
+    if to_id == user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot call yourself")
+    sig = {
+        "id": str(uuid.uuid4()),
+        "from_id": user["id"],
+        "from_name": user.get("company_name") or user["name"],
+        "to_id": to_id,
+        "order_id": order_id,
+        "type": "call",
+        "payload": {},
+        "created_at": now_iso(),
+    }
+    await db.rtc_signals.insert_one(sig)
+    return {"ok": True, "call_id": sig["id"], "to_id": to_id}
+
+
+@api_router.post("/rtc/signal")
+async def rtc_send_signal(payload: RTCSignal, user=Depends(get_current_user)):
+    sig = {
+        "id": str(uuid.uuid4()),
+        "from_id": user["id"],
+        "from_name": user.get("company_name") or user["name"],
+        "to_id": payload.to_id,
+        "order_id": payload.order_id,
+        "type": payload.type,
+        "payload": payload.payload or {},
+        "created_at": now_iso(),
+    }
+    await db.rtc_signals.insert_one(sig)
+    return {"ok": True}
+
+
+@api_router.get("/rtc/inbox")
+async def rtc_inbox(user=Depends(get_current_user)):
+    """Fetch and CONSUME all pending signals for this user (delete after read)."""
+    cursor = db.rtc_signals.find({"to_id": user["id"]}, {"_id": 0}).sort("created_at", 1)
+    signals = await cursor.to_list(200)
+    if signals:
+        ids = [s["id"] for s in signals]
+        await db.rtc_signals.delete_many({"id": {"$in": ids}})
+    return signals
+
+
+@app.on_event("startup")
+async def ensure_rtc_ttl():
+    # Auto-clean signals older than 2 minutes
+    try:
+        await db.rtc_signals.create_index("created_at", expireAfterSeconds=120)
+    except Exception:
+        pass
+
+
 @api_router.post("/admin/weekly-summary/broadcast")
 async def broadcast_weekly(_=Depends(require_admin)):
     """Manually trigger weekly summary send to all sellers with email."""

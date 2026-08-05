@@ -6,9 +6,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { Users, Truck, Package, Activity, LogOut, Coins, Check, Gift, Star, Mail } from "lucide-react";
+import { Users, Truck, Package, Activity, LogOut, Coins, Check, Gift, Star, Mail, Pencil, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
+import { AdminEditUserModal, AdminEditOrderModal } from "../components/AdminEditModals";
 
 export default function Admin() {
   const [summary, setSummary] = useState(null);
@@ -20,6 +21,8 @@ export default function Admin() {
   const [ratings, setRatings] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [broadcasting, setBroadcasting] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
   const navigate = useNavigate();
 
   const load = async () => {
@@ -55,6 +58,15 @@ export default function Admin() {
       setDrafts({ ...drafts, [category]: "" });
       load();
     } catch { toast.error("Failed to update rate"); }
+  };
+
+  const del = async (path, label) => {
+    if (!window.confirm(`Delete ${label}? This is permanent and will cascade to related records.`)) return;
+    try {
+      await adminApi.delete(path);
+      toast.success(`${label} deleted`);
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   return (
@@ -117,7 +129,7 @@ export default function Admin() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
               <table className="w-full text-sm" data-testid="admin-orders-table">
                 <thead className="text-xs uppercase tracking-widest text-white/40 border-b border-white/10">
-                  <tr><th className="p-4 text-left">Order</th><th className="p-4 text-left">Seller</th><th className="p-4 text-left">Collector</th><th className="p-4 text-left">Status</th><th className="p-4 text-right">Amount</th></tr>
+                  <tr><th className="p-4 text-left">Order</th><th className="p-4 text-left">Seller</th><th className="p-4 text-left">Collector</th><th className="p-4 text-left">Status</th><th className="p-4 text-right">Amount</th><th className="p-4 text-right">Actions</th></tr>
                 </thead>
                 <tbody>
                   {orders.map(o => (
@@ -127,9 +139,13 @@ export default function Admin() {
                       <td className="p-4">{o.collector_name || "-"}</td>
                       <td className="p-4"><Badge className="border border-white/10 bg-white/5">{o.status}</Badge></td>
                       <td className="p-4 text-right text-[#00FF66] font-bold">₹{o.estimated_amount}</td>
+                      <td className="p-4 text-right whitespace-nowrap">
+                        <Button data-testid={`edit-order-btn-${o.id}`} size="icon" variant="ghost" onClick={() => setEditingOrder(o)} className="h-8 w-8 mr-1 text-white/60 hover:text-[#00FF66]"><Pencil className="h-4 w-4"/></Button>
+                        <Button data-testid={`delete-order-btn-${o.id}`} size="icon" variant="ghost" onClick={() => del(`/admin/orders/${o.id}`, "order")} className="h-8 w-8 text-white/60 hover:text-red-400"><Trash2 className="h-4 w-4"/></Button>
+                      </td>
                     </tr>
                   ))}
-                  {orders.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-white/40">No orders yet.</td></tr>}
+                  {orders.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-white/40">No orders yet.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -163,7 +179,11 @@ export default function Admin() {
                 <div key={c.id} className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-display font-bold">{c.company_name || c.name}</div>
-                    <span className={`h-2 w-2 rounded-full ${c.online ? "bg-[#00FF66] animate-pulse" : "bg-white/20"}`}/>
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${c.online ? "bg-[#00FF66] animate-pulse" : "bg-white/20"}`}/>
+                      <Button data-testid={`edit-coll-btn-${c.id}`} size="icon" variant="ghost" onClick={() => setEditingUser(c)} className="h-7 w-7 text-white/50 hover:text-[#00FF66]"><Pencil className="h-3.5 w-3.5"/></Button>
+                      <Button data-testid={`delete-coll-btn-${c.id}`} size="icon" variant="ghost" onClick={() => del(`/admin/users/${c.id}`, `collector "${c.company_name || c.name}"`)} className="h-7 w-7 text-white/50 hover:text-red-400"><Trash2 className="h-3.5 w-3.5"/></Button>
+                    </div>
                   </div>
                   <div className="text-xs text-white/50">{c.name} · {c.mobile}</div>
                   <div className="text-xs text-white/50 mt-1">{c.address}</div>
@@ -205,6 +225,7 @@ export default function Admin() {
                         className="bg-black/60 border-white/10 max-w-[110px] h-9"
                       />
                       <Button data-testid={`pricing-save-${p.category}`} size="sm" onClick={() => savePricing(p.category)} className="rounded-full bg-[#00FF66] text-black hover:bg-[#00E055] font-semibold"><Check className="h-4 w-4"/></Button>
+                      <Button data-testid={`pricing-delete-${p.category}`} size="icon" variant="ghost" onClick={() => del(`/admin/pricing/${p.category}`, `${p.category} rate`)} className="h-8 w-8 text-white/50 hover:text-red-400"><Trash2 className="h-4 w-4"/></Button>
                     </div>
                   </div>
                 ))}
@@ -250,7 +271,7 @@ export default function Admin() {
               </div>
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase tracking-widest text-white/40 border-b border-white/10">
-                  <tr><th className="p-4 text-left">Referrer</th><th className="p-4 text-left">Referee</th><th className="p-4 text-right">Bonus</th><th className="p-4 text-left">Date</th></tr>
+                  <tr><th className="p-4 text-left">Referrer</th><th className="p-4 text-left">Referee</th><th className="p-4 text-right">Bonus</th><th className="p-4 text-left">Date</th><th className="p-4 text-right">Actions</th></tr>
                 </thead>
                 <tbody>
                   {referrals.map(r => {
@@ -262,10 +283,13 @@ export default function Admin() {
                         <td className="p-4">{referee?.name || r.referee_id.slice(0, 8)}</td>
                         <td className="p-4 text-right text-[#00FF66] font-bold">₹{r.bonus}</td>
                         <td className="p-4 text-xs text-white/50">{new Date(r.created_at).toLocaleString()}</td>
+                        <td className="p-4 text-right">
+                          <Button data-testid={`delete-ref-btn-${r.id}`} size="icon" variant="ghost" onClick={() => del(`/admin/referrals/${r.id}`, "referral (bonus will be reversed)")} className="h-8 w-8 text-white/60 hover:text-red-400"><Trash2 className="h-4 w-4"/></Button>
+                        </td>
                       </tr>
                     );
                   })}
-                  {referrals.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-white/40">No referral payouts yet.</td></tr>}
+                  {referrals.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-white/40">No referral payouts yet.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -273,6 +297,8 @@ export default function Admin() {
         </Tabs>
       </div>
       <Footer />
+      <AdminEditUserModal open={!!editingUser} onOpenChange={(v) => !v && setEditingUser(null)} user={editingUser} onSaved={load} />
+      <AdminEditOrderModal open={!!editingOrder} onOpenChange={(v) => !v && setEditingOrder(null)} order={editingOrder} pricing={pricing} onSaved={load} />
     </div>
   );
 }
