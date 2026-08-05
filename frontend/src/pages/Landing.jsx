@@ -6,9 +6,9 @@ import { Footer } from "../components/Footer";
 import { AuthModal } from "../components/AuthModal";
 import { PickupModal } from "../components/PickupModal";
 import { api, getUser } from "../lib/api";
-import { PhoneOff, Navigation, Zap, Recycle, ArrowRight, Sparkles, Star, Building2 } from "lucide-react";
+import { PhoneOff, Navigation, Zap, Recycle, ArrowRight, Sparkles, Star, Building2, TrendingUp } from "lucide-react";
+import { LiveHero } from "../components/LiveHero";
 
-const HERO_IMG = "https://images.unsplash.com/photo-1561503412-852800622772?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHw0fHxyZWN5Y2xpbmclMjB3YXN0ZSUyMHNvcnRpbmd8ZW58MHx8fHwxNzgyOTQzNDQyfDA&ixlib=rb-4.1.0&q=85";
 const FEATURE_IMG = "https://images.unsplash.com/photo-1722695510527-cc033e43be1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxzY3JhcCUyMG1ldGFsJTIwZWxlY3Ryb25pY3MlMjByZWN5Y2xpbmd8ZW58MHx8fHwxNzg1ODU0NjE0fDA&ixlib=rb-4.1.0&q=85";
 const ELEC_IMG = "https://images.unsplash.com/photo-1717667745934-53091623e8ee?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxzY3JhcCUyMG1ldGFsJTIwZWxlY3Ryb25pY3MlMjByZWN5Y2xpbmd8ZW58MHx8fHwxNzg1ODU0NjE0fDA&ixlib=rb-4.1.0&q=85";
 
@@ -34,34 +34,81 @@ export default function Landing() {
       <Header onRequestPickup={requestPickup} />
 
       {/* HERO */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-5 sm:px-8" data-testid="hero-section">
-        <div className="absolute inset-0 -z-0">
-          <img src={HERO_IMG} alt="Recycling operations" className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/60 via-[#050505]/70 to-[#050505]" />
-        </div>
+      <section className="relative pt-32 pb-24 md:pt-40 md:pb-40 px-5 sm:px-8 min-h-[92vh] flex items-center" data-testid="hero-section">
+        <LiveHero />
 
-        <div className="relative max-w-6xl mx-auto z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00FF66]/10 border border-[#00FF66]/30 text-[#00FF66] text-xs tracking-wider uppercase mb-6">
-              <Sparkles className="h-3 w-3" /> Eco Marketplace · Live
-            </div>
-            <h1 className="font-display font-black text-5xl sm:text-6xl lg:text-7xl leading-[1.05] tracking-tight">
-              Turn your scrap<br/>
-              into <span className="text-[#00FF66] text-glow">cash</span> today.
+        <div className="relative max-w-6xl mx-auto z-10 w-full">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="max-w-3xl">
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00FF66]/10 border border-[#00FF66]/30 text-[#00FF66] text-xs tracking-widest uppercase mb-6 backdrop-blur-sm"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00FF66] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00FF66]"></span>
+              </span>
+              Eco Marketplace · Live now
+            </motion.div>
+
+            <h1 className="font-display font-black text-5xl sm:text-6xl lg:text-8xl leading-[0.98] tracking-tight">
+              Turn your scrap
+              <br/>
+              into{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10 text-[#00FF66] text-glow bg-clip-text bg-gradient-to-r from-[#00FF66] via-[#7CFFA9] to-[#00FF66] text-transparent" style={{ backgroundSize: "200% auto", animation: "shimmer 3.5s linear infinite" }}>
+                  cash
+                </span>
+                <motion.span
+                  aria-hidden
+                  className="absolute -inset-2 rounded-2xl -z-0"
+                  style={{ background: "radial-gradient(closest-side,#00FF66 0%,transparent 70%)", opacity: 0.35 }}
+                  animate={{ scale: [1, 1.08, 1], opacity: [0.35, 0.55, 0.35] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </span>
+              <br/>
+              <span className="text-white/90">today.</span>
             </h1>
-            <p className="mt-6 text-lg text-white/70 max-w-xl">
+
+            <motion.p
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              className="mt-8 text-lg sm:text-xl text-white/75 max-w-xl leading-relaxed"
+            >
               Book a doorstep pickup in seconds. Verified local collectors, transparent weights, instant payments — a greener city, powered by you.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Button data-testid="hero-request-pickup-btn" size="lg" onClick={requestPickup} className="rounded-full bg-[#00FF66] hover:bg-[#00E055] text-black font-bold px-8 py-6 text-base glow-green">
-                Request Pickup <ArrowRight className="ml-2 h-5 w-5" />
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+              className="mt-10 flex flex-wrap items-center gap-4"
+            >
+              <Button data-testid="hero-request-pickup-btn" size="lg" onClick={requestPickup} className="group rounded-full bg-[#00FF66] hover:bg-[#00E055] text-black font-bold px-8 py-6 text-base glow-green">
+                Request Pickup <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button data-testid="hero-collector-btn" variant="outline" size="lg" onClick={() => window.location.href = "/collector"} className="rounded-full border-white/20 bg-white/5 hover:bg-white/10 text-white px-8 py-6 text-base">
+              <Button data-testid="hero-collector-btn" variant="outline" size="lg" onClick={() => window.location.href = "/collector"} className="rounded-full border-white/20 bg-white/5 backdrop-blur-md hover:bg-white/10 text-white px-8 py-6 text-base">
                 I'm a Collector
               </Button>
-            </div>
+            </motion.div>
+
+            {/* Live activity ticker */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }}
+              className="mt-10 inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md"
+              data-testid="live-ticker"
+            >
+              <TrendingUp className="h-4 w-4 text-[#00FF66]" />
+              <span className="text-xs text-white/70"><span className="text-[#00FF66] font-semibold">{metrics.tons_recycled.toLocaleString()}+ tons</span> recycled &amp; counting — join {metrics.happy_customers.toLocaleString()}+ households</span>
+            </motion.div>
           </motion.div>
         </div>
+
+        {/* Scroll hint */}
+        <motion.div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 hidden sm:flex flex-col items-center gap-1 text-white/40 text-[10px] uppercase tracking-[0.3em]"
+          animate={{ y: [0, 6, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span>Scroll</span>
+          <div className="w-px h-8 bg-gradient-to-b from-white/40 to-transparent" />
+        </motion.div>
       </section>
 
       {/* METRICS */}
